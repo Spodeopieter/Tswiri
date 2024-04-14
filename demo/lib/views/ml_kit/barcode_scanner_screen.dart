@@ -1,6 +1,5 @@
-import 'package:camera/camera.dart';
-
 import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
 
 import 'package:tswiri/providers.dart';
 import 'package:tswiri/views/abstract_screen.dart';
@@ -32,7 +31,7 @@ class _BarcodeSelectorScreenState extends AbstractScreen<BarcodeScannerScreen> {
   CustomPaint? _customPaint;
   var _cameraLensDirection = CameraLensDirection.back;
 
-  Set<String> _scannedBarcodes = {};
+  final Set<String> _scannedBarcodes = {};
 
   @override
   void dispose() {
