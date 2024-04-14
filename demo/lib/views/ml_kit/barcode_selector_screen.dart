@@ -121,9 +121,9 @@ class _BarcodeSelectorScreenState
       HapticFeedback.lightImpact();
 
       if (mounted) {
-        await Future.delayed(const Duration(milliseconds: 10));
-        // ignore: use_build_context_synchronously
-        Navigator.pop(context, _barcodeUUID);
+        Future.delayed(const Duration(milliseconds: 10)).then(
+          (value) => Navigator.pop(context, _barcodeUUID),
+        );
         return;
       }
     }
