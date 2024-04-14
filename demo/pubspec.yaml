@@ -50,6 +50,7 @@ dependencies:
   intl: ^0.19.0
   camera: ^0.10.5+9
   google_mlkit_barcode_scanning: ^0.10.0
+  async_task: ^1.1.1
 
 dev_dependencies:
   flutter_test:
