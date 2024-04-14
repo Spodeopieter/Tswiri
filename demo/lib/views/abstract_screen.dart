@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:tswiri/providers.dart';
+import 'package:tswiri/routes.dart';
 import 'package:tswiri/settings/settings.dart';
 import 'package:tswiri_database/space.dart';
 export 'package:isar/isar.dart';
@@ -78,12 +79,37 @@ abstract class AbstractScreen<T extends ConsumerStatefulWidget>
     );
   }
 
-  void showSnackbar(String message) {
+  void showSnackbar(String message, {bool showCloseIcon = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        showCloseIcon: true,
+        showCloseIcon: showCloseIcon,
       ),
     );
+  }
+
+  /// Launch the barcode scanner.
+  /// returns the barcodeUUID as [String].
+  Future<String?> scanBarcode() async {
+    // Check if the device has a camera.
+    final hasCamera = ref.read(settingsProvider).deviceHasCameras;
+
+    // Launch the scanner or debug selector.
+    final barcodeUUID = await Navigator.pushNamed(
+      context,
+      hasCamera ? Routes.barcodeSelector : Routes.debugBarcodeSelector,
+    );
+
+    if (barcodeUUID == null) {
+      showSnackbar('No barcode scanned');
+      return null;
+    }
+
+    if (barcodeUUID is! String) {
+      showSnackbar('Unknown error');
+      return null;
+    }
+
+    return barcodeUUID;
   }
 }
