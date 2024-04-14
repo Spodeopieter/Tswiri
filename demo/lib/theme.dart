@@ -67,3 +67,35 @@ const darkColorScheme = ColorScheme(
   outlineVariant: Color(0xFF52443D),
   scrim: Color(0xFF000000),
 );
+
+ThemeData get lightTheme {
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: lightColorScheme,
+    snackBarTheme: snackBarTheme,
+    inputDecorationTheme: inputDecorationTheme,
+  );
+}
+
+ThemeData get darkTheme {
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: darkColorScheme,
+    snackBarTheme: snackBarTheme,
+    inputDecorationTheme: inputDecorationTheme,
+  );
+}
+
+SnackBarThemeData get snackBarTheme {
+  return SnackBarThemeData(
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+    ),
+  );
+}
+
+InputDecorationTheme get inputDecorationTheme {
+  return const InputDecorationTheme(
+    border: OutlineInputBorder(),
+  );
+}

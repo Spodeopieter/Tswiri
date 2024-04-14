@@ -32,14 +32,8 @@ void main() async {
     ProviderScope(
       child: MaterialApp(
         title: 'Tswiri App',
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: lightColorScheme,
-        ),
-        darkTheme: ThemeData(
-          useMaterial3: true,
-          colorScheme: darkColorScheme,
-        ),
+        theme: lightTheme,
+        darkTheme: darkTheme,
         debugShowCheckedModeBanner: false,
         initialRoute: Routes.home,
         routes: Routes().allRoutes,
