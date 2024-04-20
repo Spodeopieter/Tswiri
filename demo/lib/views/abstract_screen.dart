@@ -3,7 +3,9 @@ import 'package:isar/isar.dart';
 import 'package:tswiri/providers.dart';
 import 'package:tswiri/routes.dart';
 import 'package:tswiri/settings/settings.dart';
-import 'package:tswiri_database/space.dart';
+import 'package:tswiri_database/collections/collections_export.dart';
+
+import 'package:tswiri_database/space/space.dart';
 export 'package:isar/isar.dart';
 
 abstract class AbstractScreen<T extends ConsumerStatefulWidget>
@@ -20,6 +22,16 @@ abstract class AbstractScreen<T extends ConsumerStatefulWidget>
       'Space is not loaded',
     );
     return space.db!;
+  }
+
+  /// Returns a list of all [CatalogedContainer]s.
+  Future<List<CatalogedContainer>> get catalogedContainers {
+    return db.catalogedContainers.where().findAll();
+  }
+
+  /// Returns a list of all [ContainerType]s.
+  Future<List<ContainerType>> get containerTypes {
+    return db.containerTypes.where().findAll();
   }
 
   Future<bool> showConfirmDialog({

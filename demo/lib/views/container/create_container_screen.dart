@@ -7,7 +7,8 @@ import 'package:tswiri/widgets/container_fields/container_name_field.dart';
 import 'package:tswiri/widgets/container_fields/container_parent_field.dart';
 import 'package:tswiri/widgets/container_fields/container_type_field.dart';
 import 'package:tswiri_database/collections/collections_export.dart';
-import 'package:tswiri_database/utils.dart';
+import 'package:tswiri_database/space/space.dart';
+
 import 'package:uuid/uuid.dart';
 
 class CreateContainerScreen extends ConsumerStatefulWidget {

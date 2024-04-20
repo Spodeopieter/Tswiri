@@ -1,17 +1,11 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 
 import 'package:tswiri/providers.dart';
 import 'package:tswiri/routes.dart';
 import 'package:tswiri/views/abstract_screen.dart';
-import 'package:tswiri/widgets/container_fields/container_barcode_field.dart';
-import 'package:tswiri/widgets/container_fields/container_children_field.dart';
-import 'package:tswiri/widgets/container_fields/container_description_field.dart';
-import 'package:tswiri/widgets/container_fields/container_name_field.dart';
-import 'package:tswiri/widgets/container_fields/container_parent_field.dart';
+import 'package:tswiri/widgets/container_fields/_export.dart';
 import 'package:tswiri_database/collections/collections_export.dart';
-import 'package:tswiri_database/utils.dart';
+import 'package:tswiri_database/space/space.dart';
 
 class ContainerScreen extends ConsumerStatefulWidget {
   final CatalogedContainer _container;

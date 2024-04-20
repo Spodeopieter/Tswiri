@@ -3,7 +3,7 @@ import 'package:tswiri/providers.dart';
 import 'package:tswiri/views/abstract_screen.dart';
 import 'package:tswiri/widgets/form_fields/barcode_form_field.dart';
 import 'package:tswiri_database/collections/collections_export.dart';
-import 'package:tswiri_database/utils.dart';
+import 'package:tswiri_database/space/space.dart';
 
 class ContainerBarcodeField extends ConsumerStatefulWidget {
   const ContainerBarcodeField({

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tswiri/providers.dart';
 import 'package:tswiri/routes.dart';
 import 'package:tswiri_database/collections/collections_export.dart';
-import 'package:tswiri_database/utils.dart';
+import 'package:tswiri_database/space/space.dart';
 
 class BarcodeFormField extends FormField<CatalogedBarcode> {
   BarcodeFormField({

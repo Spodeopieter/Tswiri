@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:tswiri/routes.dart';
 import 'package:tswiri/settings/settings.dart';
 import 'package:tswiri/theme.dart';
-import 'package:tswiri_database/space.dart';
 import 'providers.dart';
+
+import 'package:tswiri_database/space/space.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

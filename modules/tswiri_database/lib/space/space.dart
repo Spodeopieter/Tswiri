@@ -1,3 +1,5 @@
+library space;
+
 import 'dart:developer';
 import 'dart:io';
 
@@ -5,6 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:tswiri_database/collections/collections_export.dart';
 import 'package:tswiri_database/defaults/default_container_types.dart';
+
+part 'package:tswiri_database/space/extensions/cataloged_container_extensions.dart';
+part 'package:tswiri_database/space/extensions/container_type_extensions.dart';
+part 'package:tswiri_database/space/extensions/cataloged_barcode_extensions.dart';
+part 'package:tswiri_database/space/extensions/cataloged_relationship_extensions.dart';
 
 final schemas = [
   BarcodeBatchSchema,
@@ -85,5 +92,9 @@ class Space with ChangeNotifier {
     await isar.writeTxn(() async {
       isar.containerTypes.putAll(defaultTypes);
     });
+  }
+
+  void _assertLoaded() {
+    assert(isLoaded, 'Space must be loaded');
   }
 }

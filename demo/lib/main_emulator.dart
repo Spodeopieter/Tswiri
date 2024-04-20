@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tswiri/routes.dart';
 import 'package:tswiri/settings/settings.dart';
 import 'package:tswiri/theme.dart';
-import 'package:tswiri_database/space.dart';
+import 'package:tswiri_database/space/space.dart';
 import 'providers.dart';
 
 void main() async {

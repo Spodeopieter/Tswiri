@@ -17,22 +17,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.11.0"
-  async_extension:
-    dependency: transitive
-    description:
-      name: async_extension
-      sha256: a4e17ea2f3b666c9e6958f798ffdb0ca307ef5facb238abc270afa9daee9009d
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.2.12"
-  async_task:
-    dependency: "direct main"
-    description:
-      name: async_task
-      sha256: a0effde412fdb5d0b08d4329a75967a26d67e4b20055f928fe6e7ad8697222cd
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.1"
   barcode:
     dependency: transitive
     description:
