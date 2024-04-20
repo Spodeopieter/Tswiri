@@ -1,12 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:tswiri/isolates/container_filter_isolate.dart';
 
 import 'package:tswiri/providers.dart';
 import 'package:tswiri/routes.dart';
 import 'package:tswiri/views/abstract_screen.dart';
 import 'package:tswiri_database/collections/collections_export.dart';
-import 'package:tswiri_database/utils.dart';
+import 'package:tswiri_database/space/space.dart';
 
 class ContainersScreen extends ConsumerStatefulWidget {
   const ContainersScreen({super.key});
@@ -22,104 +21,182 @@ enum ContainerScreenState {
 }
 
 class _ContainersScreenState extends AbstractScreen<ContainersScreen> {
-  /// Returns a list of all [ContainerRelationship]s.
-  Future<List<CatalogedContainer>> catalogedContainers() async {
-    return db.catalogedContainers.where().findAll();
+  final searchFocusNode = FocusNode();
+  final searchTextEditingController = TextEditingController();
+
+  final stateNotifier = ValueNotifier(ContainerScreenState.normal);
+  ContainerScreenState get state => stateNotifier.value;
+  set state(ContainerScreenState state) {
+    stateNotifier.value = state;
   }
 
-  ContainerScreenState state = ContainerScreenState.normal;
   bool get isNormal => state == ContainerScreenState.normal;
   bool get isEditing => state == ContainerScreenState.editing;
   bool get isSearching => state == ContainerScreenState.searching;
 
-  final searchFocusNode = FocusNode();
+  late final containerFilterIsolate = ContainerFilterIsolate.spawn();
 
-  //TODO: implement custom scroll view with search bar
+  @override
+  void initState() {
+    super.initState();
+
+    containerFilterIsolate.then((value) async {
+      // Send the cataloged containers to the isolate.
+      value.updateIsolateData(
+        containers: await catalogedContainers,
+        containerTypes: await containerTypes,
+      );
+
+      //  Listen for changes to the cataloged containers.
+      db.catalogedContainers.watchLazy().listen((event) async {
+        value.updateIsolateData(
+          containers: await catalogedContainers,
+          containerTypes: await containerTypes,
+        );
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    containerFilterIsolate.then((value) => value.close());
+  }
 
   @override
   Widget build(BuildContext context) {
-    final body = StreamBuilder(
-      stream: db.catalogedContainers.watchLazy(),
+    final containersView = FutureBuilder(
+      future: containerFilterIsolate,
       builder: (context, snapshot) {
-        return FutureBuilder<List<CatalogedContainer>>(
-          future: catalogedContainers(),
-          initialData: null,
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              // If there is an error, display a message on the screen.
-              return Center(
-                child: Text('Error: ${snapshot.error}'),
-              );
-            } else if (!snapshot.hasData) {
-              // If the snapshot is still loading, display a loading indicator.
-              return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.data!.isEmpty) {
-              // If there is no data, display a message on the screen.
-              return const Center(
-                child: Text('No Containers found'),
-              );
-            } else {
-              // If there is data, display a list of items.
-              final items = snapshot.data!;
+        if (snapshot.hasError) {
+          return SliverToBoxAdapter(
+            child: Center(
+              child: Text('Error: ${snapshot.error}'),
+            ),
+          );
+        } else if (!snapshot.hasData) {
+          return const SliverToBoxAdapter(
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        } else {
+          final worker = snapshot.data!;
 
-              return ListView.builder(
+          return ValueListenableBuilder(
+            valueListenable: worker.results,
+            builder: (context, items, child) {
+              return SliverList.builder(
                 itemCount: items.length,
                 itemBuilder: (context, index) {
                   final item = items[index];
                   return CatalogedContainerWidget(
                     container: item,
-                    onTap: () => _onTileTap(item),
+                    onTap: _onTileTap,
                   );
                 },
               );
-            }
-          },
-        );
+            },
+          );
+        }
       },
     );
 
-    final searchAction = IconButton(
+    late final searchAction = IconButton(
       onPressed: _startSearch,
       icon: const Icon(Icons.search),
     );
 
-    final scanAction = IconButton(
+    late final scanAction = IconButton(
       tooltip: 'Scan Barcode',
       onPressed: _scanBarcode,
       icon: const Icon(Icons.scanner),
     );
 
-    final editButton = IconButton(
+    late final editButton = IconButton(
       onPressed: _startEdit,
       icon: const Icon(Icons.edit),
     );
 
-    final resetButton = IconButton(
+    late final resetButton = IconButton(
       tooltip: 'Cancel',
       onPressed: _resetState,
       icon: const Icon(Icons.close),
     );
 
-    final searchBar = TextFormField(
+    late final searchBar = TextFormField(
       focusNode: searchFocusNode,
+      controller: searchTextEditingController,
       decoration: const InputDecoration(
         contentPadding: EdgeInsets.symmetric(vertical: 2, horizontal: 8),
       ),
+      onFieldSubmitted: (value) {},
+      onChanged: (keyWord) {
+        containerFilterIsolate.then((value) {
+          value.filter(keyWord);
+        });
+      },
     );
 
-    final appBar = AppBar(
-      leading: isNormal ? editButton : null,
-      title: isSearching ? searchBar : null,
-      actions: [
-        if (isNormal) scanAction,
-        if (isNormal) searchAction,
-        if (!isNormal) resetButton,
-      ],
+    late final searchChips = ValueListenableBuilder(
+      valueListenable: stateNotifier,
+      builder: (context, value, child) {
+        if (!isSearching) return const SliverToBoxAdapter();
+
+        return FutureBuilder(
+          future: containerTypes,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) return const SliverToBoxAdapter();
+            if (!snapshot.hasData) return const SliverToBoxAdapter();
+            final containerTypes = snapshot.data!;
+
+            final chips = containerTypes.map((containerType) {
+              return Chip(
+                label: Text(containerType.name),
+                onDeleted: () {},
+              );
+            });
+
+            return SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Wrap(
+                  spacing: 4,
+                  children: chips.toList(),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    final appBar = ValueListenableBuilder(
+      valueListenable: stateNotifier,
+      builder: (context, value, child) {
+        return SliverAppBar(
+          pinned: true,
+          leading: isNormal ? editButton : null,
+          title: isSearching ? searchBar : null,
+          actions: [
+            if (isNormal) ...[
+              scanAction,
+              searchAction,
+            ],
+            if (!isNormal) resetButton,
+          ],
+        );
+      },
     );
 
     return Scaffold(
-      appBar: appBar,
-      body: body,
+      body: CustomScrollView(
+        slivers: [
+          appBar,
+          searchChips,
+          containersView,
+        ],
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
@@ -144,28 +221,22 @@ class _ContainersScreenState extends AbstractScreen<ContainersScreen> {
       return;
     }
 
-    // ignore: use_build_context_synchronously
+    if (!mounted) return;
     Navigator.of(context).pushNamed(Routes.container, arguments: container);
   }
 
   void _startEdit() {
-    setState(() {
-      state = ContainerScreenState.editing;
-    });
+    state = ContainerScreenState.editing;
   }
 
   void _startSearch() {
-    setState(() {
-      state = ContainerScreenState.searching;
-      searchFocusNode.requestFocus();
-    });
+    state = ContainerScreenState.searching;
+    searchFocusNode.requestFocus();
   }
 
   void _resetState() {
-    setState(() {
-      state = ContainerScreenState.normal;
-      searchFocusNode.unfocus();
-    });
+    state = ContainerScreenState.normal;
+    searchFocusNode.unfocus();
   }
 
   void _onTileTap(CatalogedContainer container) {
@@ -183,7 +254,7 @@ class _ContainersScreenState extends AbstractScreen<ContainersScreen> {
 
 class CatalogedContainerWidget extends ConsumerWidget {
   final CatalogedContainer container;
-  final void Function() onTap;
+  final void Function(CatalogedContainer container) onTap;
 
   const CatalogedContainerWidget({
     super.key,
@@ -212,7 +283,7 @@ class CatalogedContainerWidget extends ConsumerWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
+        onTap: () => onTap(container),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.start,
