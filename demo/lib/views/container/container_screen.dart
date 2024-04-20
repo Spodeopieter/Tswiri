@@ -25,6 +25,9 @@ class _ContainerScreenState extends AbstractScreen<ContainerScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
 
+  final _nameFocusNode = FocusNode();
+  final _descriptionFocusNode = FocusNode();
+
   late CatalogedContainer _originalContainer;
   late CatalogedBarcode? _barcode;
   late ContainerType? _type;
@@ -103,6 +106,7 @@ class _ContainerScreenState extends AbstractScreen<ContainerScreen> {
 
     final nameField = ContainerNameField(
       controller: _nameController,
+      focusNode: _nameFocusNode,
       suffixIcon: nameUndo,
       onChanged: (value) {
         setState(() {
@@ -127,6 +131,7 @@ class _ContainerScreenState extends AbstractScreen<ContainerScreen> {
 
     final descriptionField = ContainerDescriptionField(
       controller: _descriptionController,
+      focusNode: _descriptionFocusNode,
       suffixIcon: descriptionUndo,
       onChanged: (value) {
         setState(() {
@@ -228,10 +233,14 @@ class _ContainerScreenState extends AbstractScreen<ContainerScreen> {
       }
     });
 
+    _nameFocusNode.unfocus();
+    _descriptionFocusNode.unfocus();
+
     setState(() {
       _originalContainer = _container.clone();
       _originalRelationship = _relationship?.clone();
     });
+
     showSnackbar('Saved');
   }
 

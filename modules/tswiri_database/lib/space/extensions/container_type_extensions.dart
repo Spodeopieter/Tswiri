@@ -1,8 +1,13 @@
 part of space;
 
 extension ContainerTypeExtension on Space {
-  /// The list of all container types in the current space.
-  List<ContainerType> get containerTypes {
+  /// Get the list of all container types in the current space. (asynchronous)
+  Future<List<ContainerType>> get containerTypes async {
+    return db!.containerTypes.where().findAll();
+  }
+
+  /// The list of all container types in the current space. (synchronous)
+  List<ContainerType> get containerTypesSync {
     _assertLoaded();
     return db!.containerTypes.where().findAllSync();
   }
@@ -14,4 +19,3 @@ extension ContainerTypeExtension on Space {
     return db?.containerTypes.filter().uuidMatches(typeUUID).findFirstSync();
   }
 }
-

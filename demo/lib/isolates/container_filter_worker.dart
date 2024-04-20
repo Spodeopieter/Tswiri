@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:tswiri_database/collections/cataloged_container/cataloged_container.dart';
 import 'package:tswiri_database/collections/container_type/container_type.dart';
 
-class ContainerFilterIsolate {
+class ContainerFilterWorker {
   final SendPort _sendPort;
   final ReceivePort _receivePort;
   final Map<int, Completer<Object?>> _activeRequests = {};
@@ -14,7 +14,7 @@ class ContainerFilterIsolate {
 
   final results = ValueNotifier<List<CatalogedContainer>>([]);
 
-  Future<Object?> sendCommand(ContainerIsolateCommand command) async {
+  Future<Object?> _sendCommand(ContainerIsolateCommand command) async {
     if (_closed) throw StateError('Closed');
     final completer = Completer<Object?>.sync();
     final id = _idCounter++;
@@ -25,7 +25,7 @@ class ContainerFilterIsolate {
     return await completer.future;
   }
 
-  static Future<ContainerFilterIsolate> spawn() async {
+  static Future<ContainerFilterWorker> spawn() async {
     // Create a receive port and add its initial message handler.
     final initPort = RawReceivePort();
     final connection = Completer<(ReceivePort, SendPort)>.sync();
@@ -47,10 +47,10 @@ class ContainerFilterIsolate {
 
     final (receivePort, sendPort) = await connection.future;
 
-    return ContainerFilterIsolate._(receivePort, sendPort);
+    return ContainerFilterWorker._(receivePort, sendPort);
   }
 
-  ContainerFilterIsolate._(this._receivePort, this._sendPort) {
+  ContainerFilterWorker._(this._receivePort, this._sendPort) {
     _receivePort.listen(_handleResponsesFromIsolate);
   }
 
@@ -104,13 +104,28 @@ class ContainerFilterIsolate {
     SearchCommand searchCommand,
     List<CatalogedContainer> containers,
   ) {
-    final results = containers.where((container) {
+    final filteredContainers = List<CatalogedContainer>.from(containers);
+
+    // Filter by container type.
+    final containerTypes = searchCommand.containerTypes;
+    if (containerTypes.isNotEmpty) {
+      filteredContainers.removeWhere((element) {
+        final type = element.typeUUID;
+        return !containerTypes.any(
+          (containerType) => containerType.uuid == type,
+        );
+      });
+    }
+
+    // Filter by keyword.
+    final keyword = searchCommand.keyword.toLowerCase();
+    final results = filteredContainers.where((container) {
       final name = container.name;
       if (name == null) return false;
 
       final lowerCaseName = name.toLowerCase();
 
-      return lowerCaseName.contains(searchCommand.lowercaseKeyword);
+      return lowerCaseName.contains(keyword);
     }).toList();
 
     return results;
@@ -140,13 +155,21 @@ class ContainerFilterIsolate {
       containers: containers,
       containerTypes: containerTypes,
     );
-    final response = await sendCommand(command);
+    final response = await _sendCommand(command);
     results.value = containers;
     debugPrint('response: $response');
   }
 
-  void filter(String keyword) async {
-    final response = await sendCommand(SearchCommand(keyword));
+  void filter({
+    required String keyword,
+    required List<ContainerType> containerTypes,
+  }) async {
+    final command = SearchCommand(
+      keyword: keyword,
+      containerTypes: containerTypes,
+    );
+
+    final response = await _sendCommand(command);
     debugPrint('response: ${response.runtimeType}');
   }
 }
@@ -157,10 +180,13 @@ abstract class ContainerIsolateCommand {
 }
 
 class SearchCommand extends ContainerIsolateCommand {
-  SearchCommand(this.keyword);
+  SearchCommand({
+    required this.keyword,
+    required this.containerTypes,
+  });
 
   final String keyword;
-  String get lowercaseKeyword => keyword.toLowerCase();
+  final List<ContainerType> containerTypes;
 }
 
 class UpdateCommand extends ContainerIsolateCommand {

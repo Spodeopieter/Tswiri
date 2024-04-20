@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:tswiri/isolates/container_filter_isolate.dart';
+import 'package:tswiri/models/container_filter.dart';
 
 import 'package:tswiri/providers.dart';
 import 'package:tswiri/routes.dart';
 import 'package:tswiri/views/abstract_screen.dart';
+import 'package:tswiri/widgets/container_list_tile.dart';
 import 'package:tswiri_database/collections/collections_export.dart';
 import 'package:tswiri_database/space/space.dart';
 
@@ -21,9 +22,6 @@ enum ContainerScreenState {
 }
 
 class _ContainersScreenState extends AbstractScreen<ContainersScreen> {
-  final searchFocusNode = FocusNode();
-  final searchTextEditingController = TextEditingController();
-
   final stateNotifier = ValueNotifier(ContainerScreenState.normal);
   ContainerScreenState get state => stateNotifier.value;
   set state(ContainerScreenState state) {
@@ -34,74 +32,19 @@ class _ContainersScreenState extends AbstractScreen<ContainersScreen> {
   bool get isEditing => state == ContainerScreenState.editing;
   bool get isSearching => state == ContainerScreenState.searching;
 
-  late final containerFilterIsolate = ContainerFilterIsolate.spawn();
+  final searchFocusNode = FocusNode();
 
-  @override
-  void initState() {
-    super.initState();
-
-    containerFilterIsolate.then((value) async {
-      // Send the cataloged containers to the isolate.
-      value.updateIsolateData(
-        containers: await catalogedContainers,
-        containerTypes: await containerTypes,
-      );
-
-      //  Listen for changes to the cataloged containers.
-      db.catalogedContainers.watchLazy().listen((event) async {
-        value.updateIsolateData(
-          containers: await catalogedContainers,
-          containerTypes: await containerTypes,
-        );
-      });
-    });
-  }
+  late final containerFilter = ContainerFilter(space);
 
   @override
   void dispose() {
     super.dispose();
-    containerFilterIsolate.then((value) => value.close());
+    // containerFilterIsolate.then((value) => value.close());
+    containerFilter.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final containersView = FutureBuilder(
-      future: containerFilterIsolate,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return SliverToBoxAdapter(
-            child: Center(
-              child: Text('Error: ${snapshot.error}'),
-            ),
-          );
-        } else if (!snapshot.hasData) {
-          return const SliverToBoxAdapter(
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
-        } else {
-          final worker = snapshot.data!;
-
-          return ValueListenableBuilder(
-            valueListenable: worker.results,
-            builder: (context, items, child) {
-              return SliverList.builder(
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  return CatalogedContainerWidget(
-                    container: item,
-                    onTap: _onTileTap,
-                  );
-                },
-              );
-            },
-          );
-        }
-      },
-    );
-
     late final searchAction = IconButton(
       onPressed: _startSearch,
       icon: const Icon(Icons.search),
@@ -118,7 +61,7 @@ class _ContainersScreenState extends AbstractScreen<ContainersScreen> {
       icon: const Icon(Icons.edit),
     );
 
-    late final resetButton = IconButton(
+    late final cancelButton = IconButton(
       tooltip: 'Cancel',
       onPressed: _resetState,
       icon: const Icon(Icons.close),
@@ -126,34 +69,50 @@ class _ContainersScreenState extends AbstractScreen<ContainersScreen> {
 
     late final searchBar = TextFormField(
       focusNode: searchFocusNode,
-      controller: searchTextEditingController,
+      controller: containerFilter.textEditingController,
       decoration: const InputDecoration(
         contentPadding: EdgeInsets.symmetric(vertical: 2, horizontal: 8),
       ),
-      onFieldSubmitted: (value) {},
-      onChanged: (keyWord) {
-        containerFilterIsolate.then((value) {
-          value.filter(keyWord);
-        });
+    );
+
+    final appBar = ValueListenableBuilder(
+      valueListenable: stateNotifier,
+      builder: (context, value, child) {
+        return SliverAppBar(
+          pinned: true,
+          leading: isNormal ? editButton : null,
+          title: isSearching ? searchBar : null,
+          actions: [
+            if (isNormal) ...[
+              scanAction,
+              searchAction,
+            ],
+            if (!isNormal) cancelButton,
+          ],
+        );
       },
     );
 
-    late final searchChips = ValueListenableBuilder(
+    final searchChips = ValueListenableBuilder(
       valueListenable: stateNotifier,
       builder: (context, value, child) {
         if (!isSearching) return const SliverToBoxAdapter();
 
-        return FutureBuilder(
-          future: containerTypes,
-          builder: (context, snapshot) {
-            if (snapshot.hasError) return const SliverToBoxAdapter();
-            if (!snapshot.hasData) return const SliverToBoxAdapter();
-            final containerTypes = snapshot.data!;
+        return ValueListenableBuilder(
+          valueListenable: containerFilter.selectedContainerTypes,
+          builder: (context, value, child) {
+            final containerTypes = containerFilter.containerTypes;
+            if (containerTypes.isEmpty) return const SliverToBoxAdapter();
+
+            final selectedTypes = containerFilter.selectedContainerTypes.value;
 
             final chips = containerTypes.map((containerType) {
-              return Chip(
+              return FilterChip(
                 label: Text(containerType.name),
-                onDeleted: () {},
+                onSelected: (value) {
+                  containerFilter.toggleContainerType(containerType);
+                },
+                selected: selectedTypes.contains(containerType),
               );
             });
 
@@ -171,20 +130,32 @@ class _ContainersScreenState extends AbstractScreen<ContainersScreen> {
       },
     );
 
-    final appBar = ValueListenableBuilder(
-      valueListenable: stateNotifier,
-      builder: (context, value, child) {
-        return SliverAppBar(
-          pinned: true,
-          leading: isNormal ? editButton : null,
-          title: isSearching ? searchBar : null,
-          actions: [
-            if (isNormal) ...[
-              scanAction,
-              searchAction,
-            ],
-            if (!isNormal) resetButton,
-          ],
+    final containersView = ValueListenableBuilder(
+      valueListenable: containerFilter.results,
+      builder: (context, containers, child) {
+        if (containers.isEmpty && containerFilter.isInitialized) {
+          return const SliverToBoxAdapter(
+            child: Center(
+              child: Text('No containers found'),
+            ),
+          );
+        } else if (containers.isEmpty) {
+          return const SliverToBoxAdapter(
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        return SliverList.builder(
+          itemCount: containers.length,
+          itemBuilder: (context, index) {
+            final item = containers[index];
+            return CatalogedContainerListTile(
+              container: item,
+              onTap: _onTileTap,
+            );
+          },
         );
       },
     );
@@ -237,6 +208,7 @@ class _ContainersScreenState extends AbstractScreen<ContainersScreen> {
   void _resetState() {
     state = ContainerScreenState.normal;
     searchFocusNode.unfocus();
+    containerFilter.clearFilters();
   }
 
   void _onTileTap(CatalogedContainer container) {
@@ -249,62 +221,5 @@ class _ContainersScreenState extends AbstractScreen<ContainersScreen> {
         arguments: container,
       );
     }
-  }
-}
-
-class CatalogedContainerWidget extends ConsumerWidget {
-  final CatalogedContainer container;
-  final void Function(CatalogedContainer container) onTap;
-
-  const CatalogedContainerWidget({
-    super.key,
-    required this.container,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final space = ref.read(spaceProvider);
-    final containerType = space.getContainerType(container.typeUUID);
-    final name = Text(container.name.toString());
-    final description =
-        container.description != null && container.description!.isNotEmpty
-            ? Text(container.description.toString())
-            : null;
-
-    final leading = Tooltip(
-      message: containerType?.name,
-      child: Icon(
-        containerType?.iconData.iconData,
-        color: containerType?.color.color,
-      ),
-    );
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => onTap(container),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: leading,
-              title: name,
-              subtitle: description,
-            ),
-            ListTile(
-              leading: const Icon(Icons.qr_code),
-              title: Text(
-                container.barcodeUUID.toString(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

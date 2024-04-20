@@ -46,7 +46,7 @@ class _CreateContainerScreenState
 
   ContainerType get preferredContainerType {
     return space.getContainerType(parentContainerType?.preferredChild) ??
-        space.containerTypes.first;
+        space.containerTypesSync.first;
   }
 
   bool get hasChanged {
@@ -62,7 +62,7 @@ class _CreateContainerScreenState
     super.initState();
     _parentContainer = widget._parentContainer;
     _containerType = preferredContainerType;
-    _validContainerTypes = space.containerTypes.where((type) {
+    _validContainerTypes = space.containerTypesSync.where((type) {
       return parentContainerType?.canContain.contains(type.uuid) ?? true;
     }).toList();
 
