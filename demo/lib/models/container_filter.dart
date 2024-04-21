@@ -4,6 +4,17 @@ import 'package:tswiri/isolates/container_filter_worker.dart';
 import 'package:tswiri_database/collections/collections_export.dart';
 import 'package:tswiri_database/space/space.dart';
 
+/// This is a model class that handles the filtering of [CatalogedContainer]s.
+/// It uses a [ContainerFilterWorker] to perform the filtering in a separate isolate.
+///
+/// The [ContainerFilter] class is responsible for initializing the worker,
+/// updating the worker's data, and listening for changes in the worker's results.
+///
+/// The [ContainerFilter] class also listens for changes in the database and updates
+/// the worker's data accordingly.
+///
+/// The [ContainerFilter] class also listens for changes in the textEditingController
+/// and updates the worker's data accordingly.
 class ContainerFilter {
   ContainerFilter(this._space) {
     _initialize();
