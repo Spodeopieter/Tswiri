@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tswiri/providers.dart';
+import 'package:tswiri/routes.dart';
 import 'package:tswiri/views/abstract_screen.dart';
 import 'package:tswiri/widgets/container_fields/container_barcode_field.dart';
 import 'package:tswiri/widgets/container_fields/container_description_field.dart';
@@ -93,14 +94,16 @@ class _CreateContainerScreenState
 
     final floatingActionButton = FloatingActionButton.extended(
       onPressed: () async {
-        if (_formKey.currentState!.validate()) {
-          await _createContainer();
+        if (!_formKey.currentState!.validate()) return;
 
-          if (mounted) {
-            // ignore: use_build_context_synchronously
+        _createContainer().then((value) {
+          if (value == null) {
             Navigator.of(context).pop();
+          } else {
+            Navigator.of(context).pop();
+            Navigator.pushNamed(context, Routes.container, arguments: value);
           }
-        }
+        });
       },
       label: const Text('Create'),
       icon: const Icon(Icons.save),
@@ -215,7 +218,7 @@ class _CreateContainerScreenState
     return name;
   }
 
-  Future<void> _createContainer() async {
+  Future<CatalogedContainer?> _createContainer() async {
     assert(_barcode != null, 'Barcode is required');
     assert(_nameController.text.isNotEmpty, 'Name is required');
 
@@ -264,6 +267,8 @@ class _CreateContainerScreenState
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Created'), showCloseIcon: true),
     );
+
+    return await space.getCatalogedContainer(containerUUID: containerUUID);
   }
 
   Future<void> _showDiscardChangesDialog() async {
