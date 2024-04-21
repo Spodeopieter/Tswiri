@@ -29,13 +29,19 @@ void main() async {
 
   runApp(
     ProviderScope(
-      child: MaterialApp(
-        title: 'Tswiri App',
-        theme: lightTheme,
-        darkTheme: darkTheme,
-        debugShowCheckedModeBanner: false,
-        initialRoute: Routes.home,
-        routes: Routes().allRoutes,
+      child: Consumer(
+        builder: (context, ref, child) {
+          final settings = ref.watch(settingsProvider);
+          return MaterialApp(
+            title: 'Tswiri App',
+            theme: lightTheme,
+            darkTheme: darkTheme,
+            themeMode: settings.themeMode,
+            debugShowCheckedModeBanner: false,
+            initialRoute: Routes.home,
+            routes: Routes().allRoutes,
+          );
+        },
       ),
     ),
   );

@@ -1,7 +1,7 @@
 import 'dart:developer';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -28,6 +28,15 @@ class Settings with ChangeNotifier {
   late bool _deviceHasCameras = false;
   bool get deviceHasCameras => _deviceHasCameras;
 
+  static const _themePref = 'themePref';
+  late ThemeMode _themeMode;
+  ThemeMode get themeMode => _themeMode;
+  void setTheme(ThemeMode themeMode) {
+    _themeMode = themeMode;
+    prefs.setInt(_themePref, themeMode.index);
+    notifyListeners();
+  }
+
   Future<void> loadSettings() async {
     log('loading settings', name: 'Settings');
 
@@ -46,5 +55,8 @@ class Settings with ChangeNotifier {
         _deviceHasCameras = false;
       }
     }
+
+    var themeIndex = prefs.getInt(_themePref) ?? 0;
+    _themeMode = ThemeMode.values[themeIndex];
   }
 }
