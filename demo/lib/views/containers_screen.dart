@@ -37,10 +37,14 @@ class _ContainersScreenState extends AbstractScreen<ContainersScreen> {
   late final containerFilter = ContainerFilter(space);
 
   @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
   void dispose() {
-    super.dispose();
-    // containerFilterIsolate.then((value) => value.close());
     containerFilter.dispose();
+    super.dispose();
   }
 
   @override
@@ -159,7 +163,6 @@ class _ContainersScreenState extends AbstractScreen<ContainersScreen> {
         );
       },
     );
-
     return Scaffold(
       body: CustomScrollView(
         slivers: [

@@ -20,6 +20,10 @@ class ContainerTypeFormField extends FormField<ContainerType> {
               final inputDecoration = decoration
                   .copyWith(
                     errorText: state.errorText,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 12.0,
+                      horizontal: 8.0,
+                    ),
                   )
                   .applyDefaults(theme.inputDecorationTheme);
 
@@ -30,6 +34,7 @@ class ContainerTypeFormField extends FormField<ContainerType> {
                   alignment: WrapAlignment.center,
                   runAlignment: WrapAlignment.center,
                   spacing: 4.0,
+                  runSpacing: 4.0,
                   children: containerTypes.map((type) {
                     return ChoiceChip(
                       avatar: Icon(

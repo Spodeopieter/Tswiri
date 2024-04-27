@@ -42,7 +42,7 @@ class ContainerFilter {
     // Watch for changes in the db.
     _addWatchers();
 
-    worker = await ContainerFilterWorker.spawn();
+    worker = await ContainerFilterWorker.spawn(onUpdated: _onUpdated);
 
     // Load the containers and container types.
     await _updateContainers();
@@ -63,14 +63,32 @@ class ContainerFilter {
 
   void _addWatchers() {
     // Watch for changes to the cataloged containers.
-    _space.db?.catalogedContainers.watchLazy().listen((event) async {
+    _space.db?.catalogedContainers
+        .watchLazy(fireImmediately: true)
+        .listen((event) async {
       await _updateContainers();
+
+      worker?.updateIsolateData(
+        containers: containers,
+        containerTypes: containerTypes,
+      );
     });
 
     // Watch for changes to the container types.
-    _space.db?.containerTypes.watchLazy().listen((event) async {
+    _space.db?.containerTypes
+        .watchLazy(fireImmediately: true)
+        .listen((event) async {
       await _updateContainerTypes();
+
+      worker?.updateIsolateData(
+        containers: containers,
+        containerTypes: containerTypes,
+      );
     });
+  }
+
+  void _onUpdated() {
+    _filterContainers();
   }
 
   void _addListeners() {

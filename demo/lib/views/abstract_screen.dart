@@ -34,6 +34,10 @@ abstract class AbstractScreen<T extends ConsumerStatefulWidget>
     return db.containerTypes.where().findAll();
   }
 
+  Stream<void> get containerWatcher {
+    return db.catalogedContainers.watchLazy();
+  }
+
   Future<bool> showConfirmDialog({
     required String title,
     required String content,

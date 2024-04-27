@@ -13,6 +13,7 @@ class ContainerFilterWorker {
   bool _closed = false;
 
   final results = ValueNotifier<List<CatalogedContainer>>([]);
+  final void Function()? onUpdated;
 
   Future<Object?> _sendCommand(ContainerIsolateCommand command) async {
     if (_closed) throw StateError('Closed');
@@ -25,7 +26,9 @@ class ContainerFilterWorker {
     return await completer.future;
   }
 
-  static Future<ContainerFilterWorker> spawn() async {
+  static Future<ContainerFilterWorker> spawn({
+    void Function()? onUpdated,
+  }) async {
     // Create a receive port and add its initial message handler.
     final initPort = RawReceivePort();
     final connection = Completer<(ReceivePort, SendPort)>.sync();
@@ -47,26 +50,29 @@ class ContainerFilterWorker {
 
     final (receivePort, sendPort) = await connection.future;
 
-    return ContainerFilterWorker._(receivePort, sendPort);
+    return ContainerFilterWorker._(receivePort, sendPort, onUpdated);
   }
 
-  ContainerFilterWorker._(this._receivePort, this._sendPort) {
+  ContainerFilterWorker._(this._receivePort, this._sendPort, this.onUpdated) {
     _receivePort.listen(_handleResponsesFromIsolate);
   }
 
   void _handleResponsesFromIsolate(dynamic message) {
     if (message is! ContainerIsolateResponse) return;
+
     final response = message;
+
+    if (response is DataUpdated) {
+      onUpdated?.call();
+    } else if (response is SearchResponse) {
+      results.value = response.containers;
+    }
 
     final completer = _activeRequests.remove(response.id)!;
     if (response is RemoteError) {
       completer.completeError(response);
     } else {
       completer.complete(response);
-    }
-
-    if (response is SearchResponse) {
-      results.value = response.containers;
     }
   }
 
@@ -87,7 +93,7 @@ class ContainerFilterWorker {
         } else if (command is UpdateCommand) {
           containers.clear();
           containers.addAll(command.containers);
-          final response = RequestCompleted(id: command.id);
+          final response = DataUpdated(id: command.id);
           sendPort.send(response);
         } else if (command is CloseCommand) {
           sendPort.send(RequestCompleted(id: command.id));
@@ -185,6 +191,10 @@ class SearchCommand extends ContainerIsolateCommand {
     required this.containerTypes,
   });
 
+  factory SearchCommand.empty() {
+    return SearchCommand(keyword: '', containerTypes: []);
+  }
+
   final String keyword;
   final List<ContainerType> containerTypes;
 }
@@ -211,8 +221,11 @@ abstract class ContainerIsolateResponse {
 
 class SearchResponse extends ContainerIsolateResponse {
   final List<CatalogedContainer> containers;
-
   SearchResponse(this.containers, {required super.id});
+}
+
+class DataUpdated extends ContainerIsolateResponse {
+  DataUpdated({required super.id});
 }
 
 class RequestCompleted extends ContainerIsolateResponse {

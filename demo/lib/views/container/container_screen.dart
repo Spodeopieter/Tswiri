@@ -4,6 +4,7 @@ import 'package:tswiri/providers.dart';
 import 'package:tswiri/routes.dart';
 import 'package:tswiri/views/abstract_screen.dart';
 import 'package:tswiri/widgets/container_fields/_export.dart';
+import 'package:tswiri/widgets/container_fields/container_type_field.dart';
 import 'package:tswiri_database/collections/collections_export.dart';
 import 'package:tswiri_database/space/space.dart';
 
@@ -30,7 +31,7 @@ class _ContainerScreenState extends AbstractScreen<ContainerScreen> {
 
   late CatalogedContainer _originalContainer;
   late CatalogedBarcode? _barcode;
-  late ContainerType? _type;
+  late ContainerType _type;
 
   late ContainerRelationship? _relationship;
   late ContainerRelationship? _originalRelationship;
@@ -57,7 +58,7 @@ class _ContainerScreenState extends AbstractScreen<ContainerScreen> {
     super.initState();
     _originalContainer = widget._container.clone();
     _barcode = space.getCatalogedBarcode(_container.barcodeUUID);
-    _type = space.getContainerType(widget._container.typeUUID);
+    _type = space.getContainerType(widget._container.typeUUID)!;
 
     _relationship = space.getParent(
       widget._container.containerUUID,
@@ -92,22 +93,30 @@ class _ContainerScreenState extends AbstractScreen<ContainerScreen> {
       icon: const Icon(Icons.arrow_back),
     );
 
-    final nameUndo = _container.name != _originalContainer.name
-        ? IconButton(
-            onPressed: () {
-              setState(() {
-                _container.name = _originalContainer.name;
-                _nameController.text = _originalContainer.name.toString();
-              });
-            },
-            icon: const Icon(Icons.undo),
-          )
-        : null;
+    late final nameUndo = IconButton(
+      onPressed: () {
+        setState(() {
+          _container.name = _originalContainer.name;
+          _nameController.text = _originalContainer.name.toString();
+        });
+      },
+      icon: const Icon(Icons.undo),
+    );
+
+    final containerTypeField = ContainerTypeField(
+      containerTypes: space.containerTypesSync,
+      initialValue: _type,
+      onChanged: (value) {
+        setState(() {
+          _container.typeUUID = value.uuid;
+        });
+      },
+    );
 
     final nameField = ContainerNameField(
       controller: _nameController,
       focusNode: _nameFocusNode,
-      suffixIcon: nameUndo,
+      suffixIcon: _container.name != _originalContainer.name ? nameUndo : null,
       onChanged: (value) {
         setState(() {
           _container.name = value;
@@ -115,24 +124,23 @@ class _ContainerScreenState extends AbstractScreen<ContainerScreen> {
       },
     );
 
-    final descriptionUndo =
-        _container.description != _originalContainer.description
-            ? IconButton(
-                onPressed: () {
-                  setState(() {
-                    _container.description = _originalContainer.description;
-                    _descriptionController.text =
-                        _originalContainer.description.toString();
-                  });
-                },
-                icon: const Icon(Icons.undo),
-              )
-            : null;
+    final descriptionUndo = IconButton(
+      onPressed: () {
+        setState(() {
+          _container.description = _originalContainer.description;
+          _descriptionController.text =
+              _originalContainer.description.toString();
+        });
+      },
+      icon: const Icon(Icons.undo),
+    );
 
     final descriptionField = ContainerDescriptionField(
       controller: _descriptionController,
       focusNode: _descriptionFocusNode,
-      suffixIcon: descriptionUndo,
+      suffixIcon: _container.description != _originalContainer.description
+          ? descriptionUndo
+          : null,
       onChanged: (value) {
         setState(() {
           _container.description = value;
@@ -154,7 +162,7 @@ class _ContainerScreenState extends AbstractScreen<ContainerScreen> {
 
     final parentField = ContainerParentField(
       barcodeUUID: _barcode?.barcodeUUID,
-      containerType: _type!,
+      containerType: _type,
       initialValue: _parentContainer,
       canReset: true,
       canClear: true,
@@ -181,7 +189,7 @@ class _ContainerScreenState extends AbstractScreen<ContainerScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_type?.name.toString() ?? "error"),
+        title: Text(_type.name.toString()),
         leading: closeButton,
         actions: [
           hasModified && isValid ? saveButton : const SizedBox(),
@@ -198,6 +206,8 @@ class _ContainerScreenState extends AbstractScreen<ContainerScreen> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
+                  containerTypeField,
+                  spacer,
                   nameField,
                   spacer,
                   descriptionField,
@@ -219,15 +229,20 @@ class _ContainerScreenState extends AbstractScreen<ContainerScreen> {
   Future<void> _save() async {
     await db.writeTxn(() async {
       if (_container != _originalContainer) {
+        // If the container has changed update the container.
         await db.catalogedContainers.put(_container);
       }
 
       if (_relationship != _originalRelationship) {
+        // If the relationship has changed:
+
         if (_originalRelationship != null) {
+          // Remove the original relationship.
           await db.containerRelationships.delete(_originalRelationship!.id);
         }
 
         if (_relationship != null) {
+          // Put the new one in the db.
           await db.containerRelationships.put(_relationship!);
         }
       }

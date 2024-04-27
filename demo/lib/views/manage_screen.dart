@@ -18,10 +18,9 @@ class _ManageScreenState extends AbstractScreen<ManageScreen> {
       appBar: AppBar(
         title: const Text('Manage'),
       ),
-      body: GridView.count(
-        crossAxisCount: 2,
-        padding:
-            const EdgeInsets.only(top: 8.0, bottom: 8.0, left: 8.0, right: 8.0),
+      body: GridView.extent(
+        maxCrossAxisExtent: 250,
+        padding: const EdgeInsets.all(8.0),
         children: const [
           NavigationCard(
             label: 'Barcodes',

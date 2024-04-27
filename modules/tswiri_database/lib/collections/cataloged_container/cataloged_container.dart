@@ -57,7 +57,12 @@ class CatalogedContainer {
 
   @override
   bool operator ==(Object other) {
-    return other is CatalogedContainer && hashCode == other.hashCode;
+    return other is CatalogedContainer &&
+        other.containerUUID == containerUUID &&
+        other.typeUUID == typeUUID &&
+        other.name == name &&
+        other.description == description &&
+        other.barcodeUUID == barcodeUUID;
   }
 
   @override

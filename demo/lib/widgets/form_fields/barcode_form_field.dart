@@ -19,7 +19,7 @@ class BarcodeFormField extends FormField<CatalogedBarcode> {
             final theme = Theme.of(state.context).inputDecorationTheme;
             const contentPadding = EdgeInsets.symmetric(
               horizontal: 12.0,
-              vertical: 4.0,
+              vertical: 8.0,
             );
 
             final inputDecoration = decoration

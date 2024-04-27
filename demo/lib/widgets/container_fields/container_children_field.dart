@@ -26,7 +26,7 @@ class ContainerChildrenField extends ConsumerWidget {
       future: space.getChildren(containerUUID),
       initialData: null,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (!snapshot.hasData) {
           return const CircularProgressIndicator();
         }
 
@@ -36,27 +36,114 @@ class ContainerChildrenField extends ConsumerWidget {
 
         final children = snapshot.data as List<ContainerRelationship>;
 
-        if (children.isEmpty) {
-          return InputDecorator(
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+        late final emptyTile = InputDecorator(
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+          ),
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Children'),
+            subtitle: const Text('No children found'),
+            trailing: IconButton.filledTonal(
+              tooltip: 'Create child',
+              onPressed: () {
+                onAddChild();
+              },
+              icon: const Icon(Icons.add),
             ),
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Children'),
-              subtitle: const Text('No children found'),
-              trailing: IconButton.filledTonal(
-                onPressed: () {
-                  onAddChild();
-                },
-                icon: const Icon(Icons.add),
-              ),
-            ),
-          );
-        }
+          ),
+        );
 
-        return ExpansionTile(
+        late final shape = OutlineInputBorder(
+          borderSide: BorderSide(
+            color: Theme.of(context).dividerColor,
+          ),
+        );
+
+        late final collapsedShape = OutlineInputBorder(
+          borderSide: BorderSide(
+            color: Theme.of(context).dividerColor,
+          ),
+        );
+
+        late final addChildCard = Card(
+          elevation: 10,
+          margin: const EdgeInsets.all(4.0),
+          child: ListTile(
+            title: const Text('Add Child'),
+            onTap: () {
+              onAddChild();
+            },
+            trailing: const Icon(Icons.add),
+          ),
+        );
+
+        late final childrenScroll = Scrollbar(
+          controller: scrollController,
+          thumbVisibility: true,
+          trackVisibility: true,
+          radius: const Radius.circular(4),
+          child: ListView.builder(
+            controller: scrollController,
+            shrinkWrap: true,
+            itemCount: children.length,
+            itemBuilder: (context, index) {
+              final relationship = children[index];
+
+              return FutureBuilder<CatalogedContainer?>(
+                future: space.getCatalogedContainer(
+                  containerUUID: relationship.containerUUID,
+                ),
+                builder: (context, snapshot) {
+                  final loading =
+                      snapshot.connectionState == ConnectionState.waiting;
+                  final hasError = snapshot.hasError;
+                  final hasData = snapshot.hasData;
+                  final data = snapshot.data;
+
+                  final title = loading
+                      ? const CircularProgressIndicator()
+                      : hasError
+                          ? Text('Error: ${snapshot.error}')
+                          : hasData
+                              ? Text(data!.name.toString())
+                              : null;
+
+                  final hasDescription = data?.description != null &&
+                      data!.description!.isNotEmpty;
+
+                  final subtitle = loading
+                      ? null
+                      : hasError
+                          ? null
+                          : hasData
+                              ? Text(
+                                  hasDescription ? data.description! : '-',
+                                )
+                              : null;
+
+                  return Card(
+                    elevation: 5,
+                    margin: const EdgeInsets.all(4.0),
+                    child: ListTile(
+                      title: title,
+                      subtitle: subtitle,
+                      trailing: const Icon(Icons.open_in_new_outlined),
+                      onTap: () => Navigator.pushNamed(
+                        context,
+                        Routes.container,
+                        arguments: data,
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        );
+
+        late final expansionTile = ExpansionTile(
           title: const Text('Children'),
           subtitle: Text('${children.length} children'),
           maintainState: true,
@@ -64,99 +151,19 @@ class ContainerChildrenField extends ConsumerWidget {
           onExpansionChanged: (value) {
             onExpansionChanged?.call(value);
           },
-          collapsedShape: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Theme.of(context).dividerColor,
-            ),
-          ),
-          shape: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Theme.of(context).dividerColor,
-            ),
-          ),
+          shape: shape,
+          collapsedShape: collapsedShape,
           children: [
-            Card(
-              elevation: 10,
-              margin: const EdgeInsets.all(4.0),
-              child: ListTile(
-                title: const Text('Add Child'),
-                onTap: () {
-                  onAddChild();
-                },
-                trailing: const Icon(Icons.add),
-              ),
-            ),
+            addChildCard,
             const Divider(),
             LimitedBox(
               maxHeight: 300,
-              child: Scrollbar(
-                controller: scrollController,
-                thumbVisibility: true,
-                trackVisibility: true,
-                radius: const Radius.circular(4),
-                child: ListView.builder(
-                  controller: scrollController,
-                  shrinkWrap: true,
-                  itemCount: children.length,
-                  itemBuilder: (context, index) {
-                    final relationship = children[index];
-
-                    return FutureBuilder<CatalogedContainer?>(
-                      future: space.getCatalogedContainer(
-                        containerUUID: relationship.containerUUID,
-                      ),
-                      builder: (context, snapshot) {
-                        final loading =
-                            snapshot.connectionState == ConnectionState.waiting;
-                        final hasError = snapshot.hasError;
-                        final hasData = snapshot.hasData;
-                        final data = snapshot.data;
-
-                        final title = loading
-                            ? const CircularProgressIndicator()
-                            : hasError
-                                ? Text('Error: ${snapshot.error}')
-                                : hasData
-                                    ? Text(data!.name.toString())
-                                    : null;
-
-                        final hasDescription = data?.description != null &&
-                            data!.description!.isNotEmpty;
-
-                        final subtitle = loading
-                            ? null
-                            : hasError
-                                ? null
-                                : hasData
-                                    ? Text(
-                                        hasDescription
-                                            ? data.description!
-                                            : '-',
-                                      )
-                                    : null;
-
-                        return Card(
-                          elevation: 5,
-                          margin: const EdgeInsets.all(4.0),
-                          child: ListTile(
-                            title: title,
-                            subtitle: subtitle,
-                            trailing: const Icon(Icons.open_in_new_outlined),
-                            onTap: () => Navigator.pushNamed(
-                              context,
-                              Routes.container,
-                              arguments: data,
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
+              child: childrenScroll,
             )
           ],
         );
+
+        return children.isEmpty ? emptyTile : expansionTile;
       },
     );
   }
